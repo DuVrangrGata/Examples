@@ -1,0 +1,264 @@
+from engine import *
+import random, math
+from NeuralNetwork import *
+
+start()
+
+window = create_window(600, 400)
+
+# def getHeight():
+#     return 400
+
+# def getWidth():
+#     return 600
+
+
+
+class Bird:
+    def __init__(self, brain = None, learning_rate = 0.1):
+        self.y = getHeight() / 2
+        self.x = 64
+        self.r = 12
+        self.gravity = 0.7
+        self.lift = -20
+        self.velocity = 0
+        self.score = 0
+        self.fitness = 0
+        self.learning_rate = learning_rate
+        if brain is not None:
+            self.brain = brain.copy()
+        else:
+            self.brain = NeuralNetwork(5, 2, 2, self.learning_rate)
+
+    def show(self, window):
+        pygame.draw.circle(window, (255, 255, 255), (int(self.x), int(self.y)), self.r)
+
+    def mutate(self):
+        self.brain.mutate(0.1)
+
+    def think(self, pipes):
+
+        closest = Pipe()
+        closestD = math.inf
+        for i in pipes:
+            d = (i.x + i.w) - self.x
+            if d < closestD and d > 0:
+                closest = i
+                closestD = d
+
+        inputs = []
+        inputs.append(self.y / getHeight())
+        inputs.append(closest.top / getHeight())
+        inputs.append(closest.bottom / getHeight())
+        inputs.append(closest.x / getHeight())
+        inputs.append(self.velocity / 10)
+        output = self.brain.feedforward(inputs)
+        if output[0] > output[1]:
+            self.up()
+        
+    def update(self):
+        self.score += 1
+        self.velocity += self.gravity
+        self.velocity *= 0.9
+        self.y += self.velocity
+
+        if self.y < 0:
+            self.y = 0
+
+    def offScreen(self):
+        if self.y > getHeight():
+            return True
+        return False
+
+    def up(self):
+        self.velocity += self.lift
+
+    def copy(self):
+        return Bird(self.brain)
+
+class Pipe:
+    def __init__(self):
+        self.empty = 100
+        self.centery = random.randrange(self.empty, getHeight() - self.empty)
+        self.top = self.centery - self.empty / 2
+        self.bottom = getHeight() - (self.centery + self.empty / 2)
+        self.x = getWidth()
+        self.w = 80
+        self.speed = 6
+
+    def show(self, window):
+        c = (255, 255, 255)
+        pygame.draw.rect(window, c, (self.x, 0, self.w, self.top))
+        pygame.draw.rect(window, c, (self.x, getHeight() - self.bottom, self.w, self.bottom))
+
+    def update(self):
+        self.x -= self.speed
+
+    def offscreen(self):
+        if self.x < -self.w:
+            return True
+        else:
+            return False
+
+    def hits(self, bird):
+        if (bird.y - bird.r) < self.top or (bird.y + bird.r) > (getHeight() - self.bottom):
+            if bird.x > self.x and bird.x < self.x + self.w:
+                return True
+        return False
+
+def nextGeneration():
+
+    calculateFitness()
+    
+    for i in range(0, total):
+        birds.append(pickOne())
+
+    savedbirds.clear()
+
+def calculateFitness():
+    summe = 0
+    index = 0
+    global highest
+    
+    for i in range(0, len(savedbirds)):
+        if highest < savedbirds[i].score:
+            highest = savedbirds[i].score
+            print('Highscore :' + str(highest))
+            index = i
+            
+    saveChampion('best-brain.txt', savedbirds[index])
+            
+    for i in savedbirds:
+        summe += i.score
+
+    for i in savedbirds:
+        i.fitness = i.score / summe
+
+def pickOne():
+    global global_learning_rate
+    index = 0
+    r = random.randrange(0, 1)
+
+    while r > 0:
+        r = r - savedbirds[index].fitness
+        index += 1
+    index -= 1
+    
+    bird = savedbirds.pop(index)
+    child = bird.copy()
+    child.brain.setLearning_rate(global_learning_rate)
+    child.mutate()
+    return child
+
+def loadChampion(path):
+    loadedbrain = NeuralNetwork(1, 1, 1)
+    loadedbrain.load(path)
+    champion = Bird(loadedbrain)
+    return champion
+
+def saveChampion(path, bird):
+    bird.brain.save(path)
+
+total = 300
+path = "mastered-treshhold.txt"
+birds = []
+savedbirds = []
+pipes = []
+counter = 0
+highest = 0
+global_learning_rate = 0.1
+usermode = False
+onebirdmode = False
+championmode = True
+
+isRunning = True
+
+if usermode is True:
+    onebirdmode = True
+    championmode = False
+
+if championmode is True:
+    usermode = False
+    onebirdmode = True
+    champion = loadChampion(path)
+    birds.append(champion)
+
+    
+if onebirdmode is True:
+    cycles = 1
+    total = 1
+
+if championmode is False:
+    for i in range(0, total):
+        birds.append(Bird())
+            
+
+while isRunning:
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            isRunning = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and usermode is True:
+                birds[0].up()
+
+            if event.key == pygame.K_RETURN and usermode is False:
+                print('saved')
+                saveChampion('brain.txt', birds[0])
+
+            if event.key == pygame.K_l and usermode is False:
+                global_learning_rate *= 0.9
+                print('new learning_rate: ' + str(global_learning_rate))
+
+            if event.key == pygame.K_r and usermode is False:
+                global_learning_rate = 0.1
+                print('new learning_rate: ' + str(global_learning_rate))
+            
+
+            
+    if counter % 75 is 0:
+        pipes.append(Pipe())
+    
+    counter += 1
+
+    for i in range(len(pipes) - 1, -1, -1):
+        pipes[i].update()
+
+        for j in range(len(birds) - 1, -1, -1):
+            if pipes[i].hits(birds[j]):
+                if onebirdmode is True:
+                    print('Score: ' + str(birds[j].score))
+                savedbirds.append(birds.pop(j))
+                
+            if pipes[i].offscreen() is True:
+                pipes.pop(i)
+
+    for i in birds:
+        if usermode is False:
+            i.think(pipes)
+        i.update()
+
+    
+    for i in range(len(birds) - 1, -1, -1):
+        if birds[i].offScreen is True:
+            if onebirdmode is True:
+                print('Score: ' + str(birds[j].score))
+            savedbirds.append(birds.pop(j))
+                
+
+    if len(birds) is 0 and championmode is False:
+        counter = 0
+        nextGeneration()
+        pipes.clear()
+
+        
+    window.fill((0, 0, 0))
+    for i in birds:
+        i.show(window)
+    for i in pipes:
+        i.show(window)
+
+
+    update(60)
+
+exit()

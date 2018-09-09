@@ -1,0 +1,110 @@
+import random
+
+class Matrix:
+    def __init__(self, rows, cols):
+        self.rows = rows
+        self.cols = cols
+        self.data = [[0 for i in range(cols)] for j in range(rows)]
+
+    def map(self, func):
+        for i in range(0, self.rows):
+            for j in range(0, self.cols):
+                val = self.data[i][j]
+                self.data[i][j] = func(val)
+
+    @staticmethod
+    def dataToMatrix(data):
+        rows = data['rows']
+        cols = data['cols']
+        result = Matrix(rows, cols)
+        for i in range(0, rows):
+            for j in range(0, cols):
+                result.data[i][j] = data['data'][i][j]
+        return result
+
+                
+    @staticmethod
+    def static_map(matrix, func):
+        results = Matrix(matrix.rows, matrix.cols)
+        for i in range(0, matrix.rows):
+            for j in range(0, matrix.cols):
+                val = matrix.data[i][j]
+                results.data[i][j] = func(val)
+        return results
+    
+    @staticmethod            
+    def transpose(a):
+        result = Matrix(a.cols, a.rows)
+
+        for i in range(0, a.rows):
+            for j in range(0, a.cols):
+                result.data[j][i] = a.data[i][j]
+        return result
+
+    def scale(self, n):
+        if isinstance(n, Matrix):
+            for i in range(0, self.rows):
+                for j in range(0, self.cols):
+                    self.data[i][j] *= n.data[i][j]
+        else:
+        #Scalar Product
+            for i in range(0, self.rows):
+                for j in range(0, self.cols):
+                    self.data[i][j] *= n
+
+    @staticmethod
+    def multiply(a, b):
+        # Matrix Product
+        if a.cols is not b.rows:
+            print('Cols of A must match rows of B.')
+            return
+        else:
+            result = Matrix(a.rows, b.cols)
+            for i in range(0, result.rows):
+                for j in range(0, result.cols):
+                    summe = 0
+                    for k in range(0, a.cols):
+                        summe += a.data[i][k] * b.data[k][j]
+                    result.data[i][j] = summe
+            return result
+
+    def add(self, n):
+        # n is a single number or Matrix with equal cols and rows
+        if isinstance(n, Matrix):
+            for i in range(0, self.rows):
+                for j in range(0, self.cols):
+                    self.data[i][j] += n.data[i][j]
+        else:
+            for i in range(0, self.rows):
+                for j in range(0, self.cols):
+                    self.data[i][j] += n
+
+    def randomize(self):
+        for i in range(0, self.rows):
+            for j in range(0, self.cols):
+                self.data[i][j] = (random.random() * 2 - 1)
+    @staticmethod
+    def fromArray(arr):
+        m = Matrix(len(arr), 1)
+        for i in range(0, len(arr)):
+            m.data[i][0] = arr[i]
+        return m
+    
+    @staticmethod
+    def subtract(a, b):
+        result = Matrix(a.rows, a.cols)
+        for i in range(0, a.rows):
+            for j in range(0, a.cols):
+                result.data[i][j] = a.data[i][j] - b.data[i][j]
+        return result
+    
+    def toArray(self):
+        arr = []
+        for i in range(0, self.rows):
+            for j in range(0, self.cols):
+                arr.append(self.data[i][j])
+        return arr
+
+    
+    def log(self):
+        print(self.data)
